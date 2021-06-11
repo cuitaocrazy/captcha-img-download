@@ -14,18 +14,25 @@ function makeid(length) {
   return result
 }
 
-export default async (req, res) => {
-  const data = JSON.parse(fs.readFileSync('data.json'))
-  const filename = makeid(8) + '.png'
-  await axios.get('https://www.lflhgjj.cn/housingfund/ValidateCode.aspx', { responseType: 'stream' }).then(res => new Promise((resolve, reject) => {
-    const cmd = ffmpeg(res.data)
+function download_img(stream, filename) {
+  return new Promise((resolve, reject) => {
+    const cmd = ffmpeg(stream)
       .output('public/captcha-imgs/' + filename)
       .on('end', resolve)
       .on('error', reject)
     cmd.run()
-  }))
-  data.unshift({img: filename, label: ''})
-  const jsonStr = JSON.stringify(data, null, '  ')
-  fs.writeFileSync('data.json', jsonStr)
+  })
+}
+
+export default async (req, res) => {
+  const data = JSON.parse(fs.readFileSync('data.json'))
+
+  for (var i = 0; i < 10; i++) {
+    const filename = makeid(8) + '.png'
+    await axios.get('https://www.lflhgjj.cn/housingfund/ValidateCode.aspx', { responseType: 'stream' }).then(res => download_img(res.data, filename))
+    data.unshift({ img: filename, label: '' })
+    const jsonStr = JSON.stringify(data, null, '  ')
+    fs.writeFileSync('data.json', jsonStr)
+  }
   res.status(200).json(data)
 }
